@@ -10,7 +10,7 @@ comment:
 coverage:
   precision: 2
   range:
-    - 40.0
+    - 50.0
     - 80.0
   round: down
 
@@ -19,4 +19,4 @@ coverage:
     patch: false
     project:
       default:
-        target: 40
+        target: 60
