@@ -19,3 +19,6 @@ script:
 after_success:
   - make cover
   - bash <(curl -s https://codecov.io/bash)
+notifications:
+  email: false
+
