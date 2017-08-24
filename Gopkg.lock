@@ -20,6 +20,12 @@
   version = "v1.1.4"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/timonwong/go-syslog"
+  packages = ["."]
+  revision = "668844ba56d4cf2dc0a0ea670058b6425c6172a2"
+
+[[projects]]
   name = "go.uber.org/atomic"
   packages = ["."]
   revision = "4e336646b2ef9fc6e47be8e21594178f98e5ebcf"
@@ -40,6 +46,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f878f9d69525acc1a399b9058f365d891b742e4cb1691ae09d47e97699e87047"
+  inputs-digest = "6663378a669b3afaeb240a4f01a771ba029c1a9a9ef0413fff237960f9173263"
   solver-name = "gps-cdcl"
   solver-version = 1

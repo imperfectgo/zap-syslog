@@ -24,13 +24,13 @@ package zapsyslog
 import (
 	"encoding/json"
 	"errors"
-	"log/syslog"
 	"math"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	syslog "github.com/timonwong/go-syslog"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
