@@ -18,17 +18,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// +build !windows,!nacl,!plan9
-
 package zapsyslog
 
 import (
-	"log/syslog"
 	"os"
 	"path"
 	"strings"
 	"time"
 
+	syslog "github.com/timonwong/go-syslog"
 	"github.com/timonwong/zap-syslog/internal/bufferpool"
 	"go.uber.org/zap"
 	"go.uber.org/zap/buffer"

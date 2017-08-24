@@ -3,9 +3,9 @@ package main
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"log/syslog"
 	"os"
 
+	syslog "github.com/timonwong/go-syslog"
 	"github.com/timonwong/zap-syslog"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
