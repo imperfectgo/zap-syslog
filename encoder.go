@@ -55,22 +55,7 @@ type jsonEncoder interface {
 
 // SyslogEncoderConfig allows users to configure the concrete encoders for zap syslog.
 type SyslogEncoderConfig struct {
-	// Set the keys used for each log entry. If any key is empty, that portion
-	// of the entry is omitted.
-	MessageKey    string `json:"messageKey" yaml:"messageKey"`
-	NameKey       string `json:"nameKey" yaml:"nameKey"`
-	CallerKey     string `json:"callerKey" yaml:"callerKey"`
-	StacktraceKey string `json:"stacktraceKey" yaml:"stacktraceKey"`
-	// Configure the primitive representations of common complex types. For
-	// example, some users may want all time.Times serialized as floating-point
-	// seconds since epoch, while others may prefer ISO8601 strings.
-	EncodeLevel    zapcore.LevelEncoder    `json:"levelEncoder" yaml:"levelEncoder"`
-	EncodeTime     zapcore.TimeEncoder     `json:"timeEncoder" yaml:"timeEncoder"`
-	EncodeDuration zapcore.DurationEncoder `json:"durationEncoder" yaml:"durationEncoder"`
-	EncodeCaller   zapcore.CallerEncoder   `json:"callerEncoder" yaml:"callerEncoder"`
-	// Unlike the other primitive type encoders, EncodeName is optional. The
-	// zero value falls back to FullNameEncoder.
-	EncodeName zapcore.NameEncoder `json:"nameEncoder" yaml:"nameEncoder"`
+	zapcore.EncoderConfig
 
 	Facility syslog.Priority `json:"facility" yaml:"facility"`
 	Hostname string          `json:"hostname" yaml:"hostname"`
@@ -124,22 +109,7 @@ func NewSyslogEncoder(cfg SyslogEncoderConfig) zapcore.Encoder {
 		app = strings.Map(printableASCIIMapper, app)
 	}
 
-	je := zapcore.NewJSONEncoder(
-		zapcore.EncoderConfig{
-			TimeKey:        "",
-			LevelKey:       "",
-			LineEnding:     zapcore.DefaultLineEnding,
-			NameKey:        cfg.NameKey,
-			CallerKey:      cfg.CallerKey,
-			MessageKey:     cfg.MessageKey,
-			StacktraceKey:  cfg.StacktraceKey,
-			EncodeLevel:    cfg.EncodeLevel,
-			EncodeTime:     cfg.EncodeTime,
-			EncodeDuration: cfg.EncodeDuration,
-			EncodeCaller:   cfg.EncodeCaller,
-		},
-	).(jsonEncoder)
-
+	je := zapcore.NewJSONEncoder(cfg.EncoderConfig).(jsonEncoder)
 	return &syslogEncoder{
 		SyslogEncoderConfig: &cfg,
 		je:                  je,
