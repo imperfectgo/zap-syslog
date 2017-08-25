@@ -33,8 +33,7 @@ var (
 type connSyncer struct {
 	network string
 	raddr   string
-
-	conn net.Conn
+	conn    net.Conn
 }
 
 // NewConnSyncer returns a new conn sink for syslog.

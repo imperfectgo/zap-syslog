@@ -30,7 +30,7 @@ import (
 func BenchmarkSyslogEncoder(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			enc := NewSyslogEncoder(testEncoderConfig())
+			enc := NewSyslogEncoder(testEncoderConfig(DefaultFraming))
 			enc.AddString("str", "foo")
 			enc.AddInt64("int64-1", 1)
 			enc.AddInt64("int64-2", 2)

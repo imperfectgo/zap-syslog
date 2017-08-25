@@ -27,6 +27,7 @@ import (
 	"time"
 
 	syslog "github.com/timonwong/go-syslog"
+	"github.com/timonwong/zap-syslog/internal"
 	"github.com/timonwong/zap-syslog/internal/bufferpool"
 	"go.uber.org/zap"
 	"go.uber.org/zap/buffer"
@@ -48,6 +49,16 @@ var (
 	_ jsonEncoder     = zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()).(jsonEncoder)
 )
 
+// Framing configures RFC6587 TCP transport framing.
+type Framing int
+
+// Framing.
+const (
+	NonTransparentFraming Framing = iota
+	OctetCountingFraming
+	DefaultFraming = NonTransparentFraming
+)
+
 type jsonEncoder interface {
 	zapcore.Encoder
 	zapcore.ArrayEncoder
@@ -57,6 +68,7 @@ type jsonEncoder interface {
 type SyslogEncoderConfig struct {
 	zapcore.EncoderConfig
 
+	Framing  Framing         `json:"framing" yaml:"framing"`
 	Facility syslog.Priority `json:"facility" yaml:"facility"`
 	Hostname string          `json:"hostname" yaml:"hostname"`
 	PID      int             `json:"pid" yaml:"pid"`
@@ -68,12 +80,16 @@ type syslogEncoder struct {
 	je jsonEncoder
 }
 
-func printableASCIIMapper(r rune) rune {
+func rfc5424CompliantASCIIMapper(r rune) rune {
 	// PRINTUSASCII    = %d33-126
 	if r < 33 || r > 126 {
 		return '_'
 	}
 	return r
+}
+
+func toRFC5424CompliantASCIIString(s string) string {
+	return strings.Map(rfc5424CompliantASCIIMapper, s)
 }
 
 // NewSyslogEncoder creates a syslogEncoder that you should not use because I'm not done with it yet.
@@ -85,8 +101,7 @@ func NewSyslogEncoder(cfg SyslogEncoderConfig) zapcore.Encoder {
 	if cfg.Hostname == "" {
 		cfg.Hostname = nilValue
 	} else {
-		hostname := cfg.Hostname
-		hostname = strings.Map(printableASCIIMapper, hostname)
+		hostname := toRFC5424CompliantASCIIString(cfg.Hostname)
 		if len(hostname) > maxHostnameLen {
 			hostname = hostname[:maxHostnameLen]
 		}
@@ -106,9 +121,10 @@ func NewSyslogEncoder(cfg SyslogEncoderConfig) zapcore.Encoder {
 		if len(app) > maxAppNameLen {
 			app = app[:maxAppNameLen]
 		}
-		app = strings.Map(printableASCIIMapper, app)
+		app = toRFC5424CompliantASCIIString(app)
 	}
 
+	cfg.EncoderConfig.LineEnding = "\n"
 	je := zapcore.NewJSONEncoder(cfg.EncoderConfig).(jsonEncoder)
 	return &syslogEncoder{
 		SyslogEncoderConfig: &cfg,
@@ -199,7 +215,7 @@ func (enc *syslogEncoder) clone() *syslogEncoder {
 }
 
 func (enc *syslogEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
-	line := bufferpool.Get()
+	msg := bufferpool.Get()
 
 	var p syslog.Priority
 	switch ent.Level {
@@ -221,39 +237,54 @@ func (enc *syslogEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field)
 	pr := int64((enc.Facility & facilityMask) | (p & severityMask))
 
 	// <PRI>version
-	line.AppendByte('<')
-	line.AppendInt(pr)
-	line.AppendByte('>')
-	line.AppendInt(version)
+	msg.AppendByte('<')
+	msg.AppendInt(pr)
+	msg.AppendByte('>')
+	msg.AppendInt(version)
 
 	// SP TIMESTAMP
 	ts := ent.Time.UTC().Format(timestampFormat)
 	if ts == "" {
 		ts = nilValue
 	}
-	line.AppendByte(' ')
-	line.AppendString(ts)
+	msg.AppendByte(' ')
+	msg.AppendString(ts)
 
 	// SP HOSTNAME
-	line.AppendByte(' ')
-	line.AppendString(enc.Hostname)
+	msg.AppendByte(' ')
+	msg.AppendString(enc.Hostname)
 
 	// SP APP-NAME
-	line.AppendByte(' ')
-	line.AppendString(enc.App)
+	msg.AppendByte(' ')
+	msg.AppendString(enc.App)
 
 	// SP PROCID
-	line.AppendByte(' ')
-	line.AppendInt(int64(enc.PID))
+	msg.AppendByte(' ')
+	msg.AppendInt(int64(enc.PID))
 
 	// SP MSGID SP STRUCTURED-DATA (just ignore)
-	line.AppendString(" - -")
+	msg.AppendString(" - -")
 
 	// SP UTF8 MSG
 	json, err := enc.je.EncodeEntry(ent, fields)
 	if json.Len() > 0 {
-		line.AppendString(" \xef\xbb\xbf")
-		line.AppendString(json.String())
+		msg.AppendString(" \xef\xbb\xbf")
+		bs := json.Bytes()
+		if enc.Framing == OctetCountingFraming {
+			// Strip trailing line feed
+			bs = bs[:len(bs)-1]
+		}
+		msg.AppendString(internal.BytesToString(bs))
 	}
-	return line, err
+
+	if enc.Framing != OctetCountingFraming {
+		return msg, err
+	}
+
+	// SYSLOG-FRAME = MSG-LEN SP SYSLOG-MSG
+	out := bufferpool.Get()
+	out.AppendInt(int64(msg.Len()))
+	out.AppendByte(' ')
+	out.AppendString(internal.BytesToString(msg.Bytes()))
+	return out, err
 }
