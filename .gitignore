@@ -1,5 +1,5 @@
 /.idea
 /vendor
 
-/lint.log
-/cover.out
+*.log
+cover.out

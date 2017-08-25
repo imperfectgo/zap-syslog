@@ -46,14 +46,16 @@ var (
 
 func testEncoderConfig() SyslogEncoderConfig {
 	return SyslogEncoderConfig{
-		MessageKey:     "msg",
-		NameKey:        "name",
-		CallerKey:      "caller",
-		StacktraceKey:  "stacktrace",
-		EncodeTime:     zapcore.EpochTimeEncoder,
-		EncodeLevel:    zapcore.LowercaseLevelEncoder,
-		EncodeDuration: zapcore.SecondsDurationEncoder,
-		EncodeCaller:   zapcore.ShortCallerEncoder,
+		EncoderConfig: zapcore.EncoderConfig{
+			MessageKey:     "msg",
+			NameKey:        "name",
+			CallerKey:      "caller",
+			StacktraceKey:  "stacktrace",
+			EncodeTime:     zapcore.EpochTimeEncoder,
+			EncodeLevel:    zapcore.LowercaseLevelEncoder,
+			EncodeDuration: zapcore.SecondsDurationEncoder,
+			EncodeCaller:   zapcore.ShortCallerEncoder,
+		},
 
 		Hostname: "localhost",
 		App:      "encoder_test",
@@ -291,8 +293,10 @@ func TestJSONEncoderArrays(t *testing.T) {
 
 func assertOutput(t testing.TB, desc string, expected string, f func(zapcore.Encoder)) {
 	enc := NewSyslogEncoder(SyslogEncoderConfig{
-		EncodeTime:     zapcore.EpochTimeEncoder,
-		EncodeDuration: zapcore.SecondsDurationEncoder,
+		EncoderConfig: zapcore.EncoderConfig{
+			EncodeTime:     zapcore.EpochTimeEncoder,
+			EncodeDuration: zapcore.SecondsDurationEncoder,
+		},
 	}).(*syslogEncoder)
 	f(enc)
 	buf, err := enc.EncodeEntry(testEntry, nil)
@@ -377,11 +381,6 @@ func TestSyslogEncoder(t *testing.T) {
 	defer buf.Free()
 
 	output := buf.String()
-	if !strings.HasSuffix(output, "\n") {
-		t.Errorf("Wrong syslog output: no line ending")
-		return
-	}
-
 	expected := "<135>1 2017-01-02T03:04:05.123456Z localhost encoder_test 9876 - - \xef\xbb\xbf"
 	if !strings.HasPrefix(output, expected) {
 		t.Errorf("Wrong syslog output!")

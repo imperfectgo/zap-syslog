@@ -32,13 +32,16 @@ import (
 	"time"
 )
 
-const (
-	testMessage = "<34>1 2003-10-11T22:14:15.003Z mymachine.example.com su - ID47 - " +
-		"\xef\xbb\xbf'su root' failed for lonvick on /dev/pts/8"
-)
-
 var (
 	crashy = false
+
+	testMessages = []string{
+		"<34>1 2003-10-11T22:14:15.003Z mymachine.example.com su - ID47 - \xef\xbb\xbf'su root' failed for lonvick on /dev/pts/8",
+		"<165>1 2003-10-11T22:14:15.003Z localhost evntslog - ID47 - \xef\xbb\xbfAn application event log entry...",
+		`<165>1 2003-10-11T22:14:15.003Z mymachine.example.com evntslog - ID47 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"] An application event log entry...`,
+		`<165>1 2003-10-11T22:14:15.003Z mymachine.example.com evntslog - ID47 `,
+	}
+	testMessage = testMessages[0]
 )
 
 func runPktSyslog(c net.PacketConn, done chan<- string) {
@@ -138,10 +141,6 @@ func startServer(n, la string, done chan<- string) (addr string, sock io.Closer,
 
 func TestWrite(t *testing.T) {
 	t.Parallel()
-	testMessages := []string{
-		testMessage,
-		"<165>1 2003-10-11T22:14:15.003Z localhost evntslog - ID47 - \xef\xbb\xbfAn application event log entry...",
-	}
 
 	for _, msg := range testMessages {
 		done := make(chan string)

@@ -9,7 +9,7 @@ PKG_FILES ?= $(shell find . -path ./vendor -prune -o -name '*.go' -print)
 # stable release.
 GO_VERSION := $(shell go version | cut -d " " -f 3)
 GO_MINOR_VERSION := $(word 2,$(subst ., ,$(GO_VERSION)))
-LINTABLE_MINOR_VERSIONS := 8
+LINTABLE_MINOR_VERSIONS := 7 8 9
 ifneq ($(filter $(LINTABLE_MINOR_VERSIONS),$(GO_MINOR_VERSION)),)
 SHOULD_LINT := true
 endif
