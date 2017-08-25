@@ -24,6 +24,7 @@ package zapsyslog
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -44,23 +45,30 @@ var (
 	}
 )
 
-func testEncoderConfig() SyslogEncoderConfig {
-	return SyslogEncoderConfig{
-		EncoderConfig: zapcore.EncoderConfig{
-			MessageKey:     "msg",
-			NameKey:        "name",
-			CallerKey:      "caller",
-			StacktraceKey:  "stacktrace",
-			EncodeTime:     zapcore.EpochTimeEncoder,
-			EncodeLevel:    zapcore.LowercaseLevelEncoder,
-			EncodeDuration: zapcore.SecondsDurationEncoder,
-			EncodeCaller:   zapcore.ShortCallerEncoder,
+func TestToRFC5424CompliantASCIIString(t *testing.T) {
+	fixtures := []struct {
+		s        string
+		expected string
+	}{
+		{
+			s:        " abc ",
+			expected: "_abc_",
 		},
+		{
+			s:        "中文",
+			expected: "__",
+		},
+		{
+			s:        "\x00\x01\x02\x03\x04test",
+			expected: "_____test",
+		},
+	}
 
-		Hostname: "localhost",
-		App:      "encoder_test",
-		PID:      9876,
-		Facility: syslog.LOG_LOCAL0,
+	for _, f := range fixtures {
+		actual := toRFC5424CompliantASCIIString(f.s)
+		if !assert.Equal(t, f.expected, actual) {
+			return
+		}
 	}
 }
 
@@ -366,8 +374,29 @@ func (nj noJSON) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("no")
 }
 
-func TestSyslogEncoder(t *testing.T) {
-	enc := NewSyslogEncoder(testEncoderConfig())
+func testEncoderConfig(framing Framing) SyslogEncoderConfig {
+	return SyslogEncoderConfig{
+		EncoderConfig: zapcore.EncoderConfig{
+			MessageKey:     "msg",
+			NameKey:        "name",
+			CallerKey:      "caller",
+			StacktraceKey:  "stacktrace",
+			EncodeTime:     zapcore.EpochTimeEncoder,
+			EncodeLevel:    zapcore.LowercaseLevelEncoder,
+			EncodeDuration: zapcore.SecondsDurationEncoder,
+			EncodeCaller:   zapcore.ShortCallerEncoder,
+		},
+
+		Framing:  framing,
+		Hostname: "localhost",
+		App:      "encoder_test",
+		PID:      9876,
+		Facility: syslog.LOG_LOCAL0,
+	}
+}
+
+func testSyslogEncoderFraming(t *testing.T, framing Framing) {
+	enc := NewSyslogEncoder(testEncoderConfig(framing))
 	enc.AddString("str", "foo")
 	enc.AddInt64("int64-1", 1)
 	enc.AddInt64("int64-2", 2)
@@ -380,20 +409,37 @@ func TestSyslogEncoder(t *testing.T) {
 	buf, _ := enc.EncodeEntry(testEntry, nil)
 	defer buf.Free()
 
-	output := buf.String()
-	expected := "<135>1 2017-01-02T03:04:05.123456Z localhost encoder_test 9876 - - \xef\xbb\xbf"
-	if !strings.HasPrefix(output, expected) {
-		t.Errorf("Wrong syslog output!")
-		t.Logf("output is: %s", output)
+	msg := buf.String()
+	msgPrefix := "<135>1 2017-01-02T03:04:05.123456Z localhost encoder_test 9876 - - \xef\xbb\xbf"
+	if framing == OctetCountingFraming {
+		spacePos := strings.Index(msg, " ") + 1
+		msgPrefix = fmt.Sprintf("%d %s", buf.Len()-spacePos, msgPrefix)
+	}
+
+	if !strings.HasPrefix(msg, msgPrefix) {
+		t.Errorf("Wrong syslog output for framing: %s", framing)
+		t.Log(msg)
+		t.Log(msgPrefix)
 		return
 	}
 
-	jsonString := output[len(expected):]
+	if framing == OctetCountingFraming && strings.HasSuffix(msg, "\n") {
+		t.Errorf("syslog output for OctetCountingFraming should not ends with `\\n`")
+		return
+	}
+
+	jsonString := msg[len(msgPrefix):]
 	var m map[string]interface{}
 	err := json.Unmarshal([]byte(jsonString), &m)
 	if err != nil {
 		t.Errorf("message part of syslog output is not a valid json string: %s", err)
-		t.Logf("json string is: %s", jsonString)
+		t.Logf("actual got: %s", jsonString)
 		return
+	}
+}
+
+func TestSyslogEncoder(t *testing.T) {
+	for _, framing := range []Framing{NonTransparentFraming, OctetCountingFraming} {
+		testSyslogEncoderFraming(t, framing)
 	}
 }

@@ -44,7 +44,7 @@ func main() {
 
 	l := logger.With(zap.String("str", "foo"))
 	for i := 0; i < 100; i++ {
-		l.Info("Hello, world", zap.Int("int", i), zap.String("hex", generateHexString()))
+		l.Info("Hello, world!", zap.Int("int", i), zap.String("hex", generateHexString()))
 	}
 }
 

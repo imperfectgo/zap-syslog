@@ -149,7 +149,7 @@ func TestWrite(t *testing.T) {
 		defer sock.Close()
 		l, err := NewConnSyncer("udp", addr)
 		if err != nil {
-			t.Fatalf("syslog.Dial() failed: %v", err)
+			t.Fatalf("NewConnSyncer() failed: %v", err)
 		}
 		_, err = io.WriteString(l, msg)
 		if err != nil {
@@ -168,7 +168,7 @@ func TestConcurrentWrite(t *testing.T) {
 	defer sock.Close()
 	s, err := NewConnSyncer("udp", addr)
 	if err != nil {
-		t.Fatalf("zapsyslog.NewConnSyncer() failed: %v", err)
+		t.Fatalf("NewConnSyncer() failed: %v", err)
 	}
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
@@ -217,10 +217,11 @@ func TestConcurrentReconnect(t *testing.T) {
 			defer wg.Done()
 			s, err := NewConnSyncer("tcp", addr)
 			if err != nil {
-				t.Errorf("zapsyslog.NewConnSyncer() failed: %v", err)
+				t.Errorf("NewConnSyncer() failed: %v", err)
 				return
 			}
 			for i := 0; i < M; i++ {
+				s.(*connSyncer).conn = nil
 				_, err := io.WriteString(s, testMessage)
 				if err != nil {
 					t.Errorf("WriteString() failed: %v", err)
@@ -238,5 +239,31 @@ func TestConcurrentReconnect(t *testing.T) {
 	case <-count:
 	case <-time.After(100 * time.Millisecond):
 		t.Error("timeout in concurrent reconnect")
+	}
+}
+
+func TestFailedToConnect(t *testing.T) {
+	addr, sock, srvWG := startServer("tcp", "", make(chan string, 1))
+	sock.Close()
+	srvWG.Wait()
+
+	_, err := NewConnSyncer("tcp", addr)
+	if err == nil {
+		t.Fatalf("NewConnSyncer() connect to an invalid address should returns error")
+	}
+}
+
+func TestSync(t *testing.T) {
+	addr, sock, srvWG := startServer("udp", "", make(chan string, 1))
+	defer srvWG.Wait()
+	defer sock.Close()
+	// Should always be nil
+	s, err := NewConnSyncer("udp", addr)
+	if err != nil {
+		t.Fatalf("NewConnSyncer() failed: %v", err)
+	}
+
+	if err := s.Sync(); err != nil {
+		t.Fatalf("Sync() should always returns nil")
 	}
 }
