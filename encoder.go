@@ -286,5 +286,6 @@ func (enc *syslogEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field)
 	out.AppendInt(int64(msg.Len()))
 	out.AppendByte(' ')
 	out.AppendString(internal.BytesToString(msg.Bytes()))
+	msg.Free()
 	return out, err
 }
