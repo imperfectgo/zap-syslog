@@ -221,7 +221,12 @@ func TestConcurrentReconnect(t *testing.T) {
 				return
 			}
 			for i := 0; i < M; i++ {
-				s.(*connSyncer).conn = nil
+				if i%2 == 0 {
+					// By a chance, close the connection
+					s.conn.Close()
+					s.conn = nil
+				}
+
 				_, err := io.WriteString(s, testMessage)
 				if err != nil {
 					t.Errorf("WriteString() failed: %v", err)
