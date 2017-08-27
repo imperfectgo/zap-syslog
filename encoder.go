@@ -26,9 +26,9 @@ import (
 	"strings"
 	"time"
 
-	syslog "github.com/timonwong/go-syslog"
 	"github.com/timonwong/zap-syslog/internal"
 	"github.com/timonwong/zap-syslog/internal/bufferpool"
+	"github.com/timonwong/zap-syslog/syslog"
 	"go.uber.org/zap"
 	"go.uber.org/zap/buffer"
 	"go.uber.org/zap/zapcore"

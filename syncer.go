@@ -27,18 +27,18 @@ import (
 )
 
 var (
-	_ zapcore.WriteSyncer = &connSyncer{}
+	_ zapcore.WriteSyncer = &ConnSyncer{}
 )
 
-type connSyncer struct {
+type ConnSyncer struct {
 	network string
 	raddr   string
 	conn    net.Conn
 }
 
 // NewConnSyncer returns a new conn sink for syslog.
-func NewConnSyncer(network, raddr string) (zapcore.WriteSyncer, error) {
-	s := &connSyncer{
+func NewConnSyncer(network, raddr string) (*ConnSyncer, error) {
+	s := &ConnSyncer{
 		network: network,
 		raddr:   raddr,
 	}
@@ -52,7 +52,7 @@ func NewConnSyncer(network, raddr string) (zapcore.WriteSyncer, error) {
 }
 
 // connect makes a connection to the syslog server.
-func (s *connSyncer) connect() error {
+func (s *ConnSyncer) connect() error {
 	if s.conn != nil {
 		// ignore err from close, it makes sense to continue anyway
 		s.conn.Close()
@@ -70,7 +70,7 @@ func (s *connSyncer) connect() error {
 }
 
 // Write writes to syslog with retry.
-func (s *connSyncer) Write(p []byte) (n int, err error) {
+func (s *ConnSyncer) Write(p []byte) (n int, err error) {
 	if s.conn != nil {
 		if n, err := s.conn.Write(p); err == nil {
 			return n, err
@@ -83,6 +83,6 @@ func (s *connSyncer) Write(p []byte) (n int, err error) {
 	return s.conn.Write(p)
 }
 
-func (s *connSyncer) Sync() error {
+func (s *ConnSyncer) Sync() error {
 	return nil
 }
