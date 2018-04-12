@@ -32,6 +32,7 @@ import (
 
 	"github.com/imperfectgo/zap-syslog/syslog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -66,9 +67,7 @@ func TestToRFC5424CompliantASCIIString(t *testing.T) {
 
 	for _, f := range fixtures {
 		actual := toRFC5424CompliantASCIIString(f.s)
-		if !assert.Equal(t, f.expected, actual) {
-			return
-		}
+		require.Equal(t, f.expected, actual)
 	}
 }
 
@@ -308,17 +307,13 @@ func assertOutput(t testing.TB, desc string, expected string, f func(zapcore.Enc
 	}).(*syslogEncoder)
 	f(enc)
 	buf, err := enc.EncodeEntry(testEntry, nil)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 	defer buf.Free()
 
 	const bom = "\xef\xbb\xbf"
 	output := buf.String()
 	i := strings.Index(output, "\xef\xbb\xbf")
-	if !assert.Condition(t, func() (success bool) { return i > 0 }, "not a valid syslog output") {
-		return
-	}
+	require.Condition(t, func() (success bool) { return i > 0 }, "not a valid syslog output")
 
 	jsonString := output[i+len(bom):]
 	assert.Contains(t, jsonString, expected)
@@ -417,7 +412,7 @@ func testSyslogEncoderFraming(t *testing.T, framing Framing) {
 	}
 
 	if !strings.HasPrefix(msg, msgPrefix) {
-		t.Errorf("Wrong syslog output for framing: %s", framing)
+		t.Errorf("Wrong syslog output for framing: %d", framing)
 		t.Log(msg)
 		t.Log(msgPrefix)
 		return

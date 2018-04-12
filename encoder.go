@@ -46,11 +46,8 @@ const (
 
 var (
 	_ zapcore.Encoder = &syslogEncoder{}
-	_ jsonEncoder     = zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()).(jsonEncoder)
+	_                 = zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()).(jsonEncoder)
 )
-
-// Framing configures RFC6587 TCP transport framing.
-type Framing int
 
 // Framing.
 const (
@@ -58,6 +55,9 @@ const (
 	OctetCountingFraming
 	DefaultFraming = NonTransparentFraming
 )
+
+// Framing configures RFC6587 TCP transport framing.
+type Framing int
 
 type jsonEncoder interface {
 	zapcore.Encoder
@@ -92,7 +92,7 @@ func toRFC5424CompliantASCIIString(s string) string {
 	return strings.Map(rfc5424CompliantASCIIMapper, s)
 }
 
-// NewSyslogEncoder creates a syslogEncoder that you should not use because I'm not done with it yet.
+// NewSyslogEncoder creates a syslogEncoder.
 func NewSyslogEncoder(cfg SyslogEncoderConfig) zapcore.Encoder {
 	if cfg.Hostname == "" {
 		hostname, _ := os.Hostname()
@@ -243,12 +243,12 @@ func (enc *syslogEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field)
 	msg.AppendInt(version)
 
 	// SP TIMESTAMP
-	ts := ent.Time.UTC().Format(timestampFormat)
-	if ts == "" {
-		ts = nilValue
-	}
 	msg.AppendByte(' ')
-	msg.AppendString(ts)
+	if ent.Time.IsZero() {
+		msg.AppendString(nilValue)
+	} else {
+		msg.AppendString(ent.Time.Format(timestampFormat))
+	}
 
 	// SP HOSTNAME
 	msg.AppendByte(' ')
