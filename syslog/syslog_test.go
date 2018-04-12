@@ -10,7 +10,7 @@ func TestFacilityPriority(t *testing.T) {
 		}
 
 		if actual != priority {
-			t.Fatalf("Expected returned priority: %s, actual: %s", facility, actual)
+			t.Fatalf("Expected returned priority: %d, actual: %d", priority, actual)
 		}
 	}
 

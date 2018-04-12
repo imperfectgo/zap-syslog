@@ -30,6 +30,7 @@ var (
 	_ zapcore.WriteSyncer = &ConnSyncer{}
 )
 
+// ConnSyncer describes connection sink for syslog.
 type ConnSyncer struct {
 	network string
 	raddr   string
@@ -83,6 +84,7 @@ func (s *ConnSyncer) Write(p []byte) (n int, err error) {
 	return s.conn.Write(p)
 }
 
+// Sync implements zapcore.WriteSyncer interface.
 func (s *ConnSyncer) Sync() error {
 	return nil
 }
